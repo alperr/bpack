@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -8,14 +7,14 @@ public class BPack : IDisposable
     private MemoryStream buf;
     private BinaryWriter writer;
     private BinaryReader reader;
-    private int offset;
+    private int readOffset;
+    private int writeOffset;
 
     public BPack(int size)
     {
         buf = new MemoryStream(size);
         writer = new BinaryWriter(buf);
         reader = new BinaryReader(buf);
-        offset = 0;
     }
 
     public BPack(byte[] buffer)
@@ -23,84 +22,49 @@ public class BPack : IDisposable
         buf = new MemoryStream(buffer);
         writer = new BinaryWriter(buf);
         reader = new BinaryReader(buf);
-        offset = 0;
     }
 
+    // ===== WRITE METHODS =====
     public void WriteInt32(int val)
     {
         writer.Write(val);
-        offset += 4;
-    }
-
-    public int ReadInt32(byte[] buffer, int offset)
-    {
-        return BitConverter.ToInt32(buffer, offset);
+        writeOffset += 4;
     }
 
     public void WriteUInt32(uint val)
     {
         writer.Write(val);
-        offset += 4;
-    }
-
-    public uint ReadUInt32(byte[] buffer, int offset)
-    {
-        return BitConverter.ToUInt32(buffer, offset);
+        writeOffset += 4;
     }
 
     public void WriteInt16(short val)
     {
         writer.Write(val);
-        offset += 2;
-    }
-
-    public short ReadInt16(byte[] buffer, int offset)
-    {
-        return BitConverter.ToInt16(buffer, offset);
+        writeOffset += 2;
     }
 
     public void WriteUInt16(ushort val)
     {
         writer.Write(val);
-        offset += 2;
+        writeOffset += 2;
     }
 
-    public ushort ReadUInt16(byte[] buffer, int offset)
-    {
-        return BitConverter.ToUInt16(buffer, offset);
-    }
-
-    public void WriteUInt8(byte val)
+    public void WriteByte(byte val)
     {
         writer.Write(val);
-        offset += 1;
-    }
-
-    public byte ReadUInt8(byte[] buffer, int offset)
-    {
-        return buffer[offset];
+        writeOffset += 1;
     }
 
     public void WriteFloat(float val)
     {
         writer.Write(val);
-        offset += 4;
-    }
-
-    public float ReadFloat(byte[] buffer, int offset)
-    {
-        return BitConverter.ToSingle(buffer, offset);
+        writeOffset += 4;
     }
 
     public void WriteDouble(double val)
     {
         writer.Write(val);
-        offset += 8;
-    }
-
-    public double ReadDouble(byte[] buffer, int offset)
-    {
-        return BitConverter.ToDouble(buffer, offset);
+        writeOffset += 8;
     }
 
     public void WriteString(string val)
@@ -108,236 +72,238 @@ public class BPack : IDisposable
         byte[] bytes = Encoding.UTF8.GetBytes(val);
         WriteInt32(bytes.Length);
         writer.Write(bytes);
-        offset += bytes.Length;
-    }
-
-    public string ReadString(byte[] buffer, int offset)
-    {
-        int len = BitConverter.ToInt32(buffer, offset);
-        offset += 4;
-        return Encoding.UTF8.GetString(buffer, offset, len);
+        writeOffset += bytes.Length;
     }
 
     public void WriteBuffer(byte[] buffer)
     {
         WriteInt32(buffer.Length);
         writer.Write(buffer);
-        offset += buffer.Length;
+        writeOffset += buffer.Length;
     }
 
-    public byte[] ReadBuffer(byte[] buffer, int offset)
-    {
-        int len = BitConverter.ToInt32(buffer, offset);
-        offset += 4;
-        byte[] result = new byte[len];
-        Array.Copy(buffer, offset, result, 0, len);
-        return result;
-    }
-
-    public void WriteBufferArray(byte[][] arr)
-    {
-        WriteInt32(arr.Length);
-        foreach (byte[] buffer in arr)
-        {
-            WriteBuffer(buffer);
-        }
-    }
-
-    public byte[][] ReadBufferArray(byte[] buffer, int offset)
-    {
-        int len = BitConverter.ToInt32(buffer, offset);
-        offset += 4;
-        byte[][] result = new byte[len][];
-        for (int i = 0; i < len; i++)
-        {
-            result[i] = ReadBuffer(buffer, offset);
-            offset += result[i].Length + 4;
-        }
-        return result;
-    }
-
+    // ===== WRITE ARRAY METHODS =====
     public void WriteInt32Array(int[] arr)
     {
         WriteInt32(arr.Length);
-        foreach (int val in arr)
-        {
+        foreach (var val in arr)
             WriteInt32(val);
-        }
-    }
-
-    public int[] ReadInt32Array(byte[] buffer, int offset)
-    {
-        int len = BitConverter.ToInt32(buffer, offset);
-        offset += 4;
-        int[] result = new int[len];
-        for (int i = 0; i < len; i++)
-        {
-            result[i] = BitConverter.ToInt32(buffer, offset);
-            offset += 4;
-        }
-        return result;
     }
 
     public void WriteUInt32Array(uint[] arr)
     {
         WriteInt32(arr.Length);
-        foreach (uint val in arr)
-        {
+        foreach (var val in arr)
             WriteUInt32(val);
-        }
-    }
-
-    public uint[] ReadUInt32Array(byte[] buffer, int offset)
-    {
-        int len = BitConverter.ToInt32(buffer, offset);
-        offset += 4;
-        uint[] result = new uint[len];
-        for (int i = 0; i < len; i++)
-        {
-            result[i] = BitConverter.ToUInt32(buffer, offset);
-            offset += 4;
-        }
-        return result;
     }
 
     public void WriteInt16Array(short[] arr)
     {
         WriteInt32(arr.Length);
-        foreach (short val in arr)
-        {
+        foreach (var val in arr)
             WriteInt16(val);
-        }
-    }
-
-    public short[] ReadInt16Array(byte[] buffer, int offset)
-    {
-        int len = BitConverter.ToInt32(buffer, offset);
-        offset += 4;
-        short[] result = new short[len];
-        for (int i = 0; i < len; i++)
-        {
-            result[i] = BitConverter.ToInt16(buffer, offset);
-            offset += 2;
-        }
-        return result;
     }
 
     public void WriteUInt16Array(ushort[] arr)
     {
         WriteInt32(arr.Length);
-        foreach (ushort val in arr)
-        {
+        foreach (var val in arr)
             WriteUInt16(val);
-        }
     }
 
-    public ushort[] ReadUInt16Array(byte[] buffer, int offset)
-    {
-        int len = BitConverter.ToInt32(buffer, offset);
-        offset += 4;
-        ushort[] result = new ushort[len];
-        for (int i = 0; i < len; i++)
-        {
-            result[i] = BitConverter.ToUInt16(buffer, offset);
-            offset += 2;
-        }
-        return result;
-    }
-
-    public void WriteUInt8Array(byte[] arr)
+    public void WriteByteArray(byte[] arr)
     {
         WriteInt32(arr.Length);
-        foreach (byte val in arr)
-        {
-            WriteUInt8(val);
-        }
-    }
-
-    public byte[] ReadUInt8Array(byte[] buffer, int offset)
-    {
-        int len = BitConverter.ToInt32(buffer, offset);
-        offset += 4;
-        byte[] result = new byte[len];
-        for (int i = 0; i < len; i++)
-        {
-            result[i] = buffer[offset];
-            offset += 1;
-        }
-        return result;
+        writer.Write(arr);
+        writeOffset += arr.Length;
     }
 
     public void WriteFloatArray(float[] arr)
     {
         WriteInt32(arr.Length);
-        foreach (float val in arr)
-        {
+        foreach (var val in arr)
             WriteFloat(val);
-        }
-    }
-
-    public float[] ReadFloatArray(byte[] buffer, int offset)
-    {
-        int len = BitConverter.ToInt32(buffer, offset);
-        offset += 4;
-        float[] result = new float[len];
-        for (int i = 0; i < len; i++)
-        {
-            result[i] = BitConverter.ToSingle(buffer, offset);
-            offset += 4;
-        }
-        return result;
     }
 
     public void WriteDoubleArray(double[] arr)
     {
         WriteInt32(arr.Length);
-        foreach (double val in arr)
-        {
+        foreach (var val in arr)
             WriteDouble(val);
-        }
-    }
-
-    public double[] ReadDoubleArray(byte[] buffer, int offset)
-    {
-        int len = BitConverter.ToInt32(buffer, offset);
-        offset += 4;
-        double[] result = new double[len];
-        for (int i = 0; i < len; i++)
-        {
-            result[i] = BitConverter.ToDouble(buffer, offset);
-            offset += 8;
-        }
-        return result;
     }
 
     public void WriteStringArray(string[] arr)
     {
         WriteInt32(arr.Length);
-        foreach (string val in arr)
-        {
+        foreach (var val in arr)
             WriteString(val);
-        }
     }
 
-    public string[] ReadStringArray(byte[] buffer, int offset)
+    public void WriteBufferArray(byte[][] arr)
     {
-        int len = BitConverter.ToInt32(buffer, offset);
-        offset += 4;
-        string[] result = new string[len];
-        for (int i = 0; i < len; i++)
-        {
-            int strLen = BitConverter.ToInt32(buffer, offset);
-            offset += 4;
-            result[i] = Encoding.UTF8.GetString(buffer, offset, strLen);
-            offset += strLen;
-        }
-        return result;
+        WriteInt32(arr.Length);
+        foreach (var val in arr)
+            WriteBuffer(val);
     }
 
+    // ===== READ METHODS =====
+    public int ReadInt32()
+    {
+        int val = reader.ReadInt32();
+        readOffset += 4;
+        return val;
+    }
+
+    public uint ReadUInt32()
+    {
+        uint val = reader.ReadUInt32();
+        readOffset += 4;
+        return val;
+    }
+
+    public short ReadInt16()
+    {
+        short val = reader.ReadInt16();
+        readOffset += 2;
+        return val;
+    }
+
+    public ushort ReadUInt16()
+    {
+        ushort val = reader.ReadUInt16();
+        readOffset += 2;
+        return val;
+    }
+
+    public byte ReadByte()
+    {
+        byte val = reader.ReadByte();
+        readOffset += 1;
+        return val;
+    }
+
+    public float ReadFloat()
+    {
+        float val = reader.ReadSingle();
+        readOffset += 4;
+        return val;
+    }
+
+    public double ReadDouble()
+    {
+        double val = reader.ReadDouble();
+        readOffset += 8;
+        return val;
+    }
+
+    public string ReadString()
+    {
+        int length = ReadInt32();
+        byte[] bytes = reader.ReadBytes(length);
+        readOffset += length;
+        return Encoding.UTF8.GetString(bytes);
+    }
+
+    public byte[] ReadBuffer()
+    {
+        int length = ReadInt32();
+        byte[] buffer = reader.ReadBytes(length);
+        readOffset += length;
+        return buffer;
+    }
+
+    // ===== READ ARRAY METHODS =====
+    public int[] ReadInt32Array()
+    {
+        int length = ReadInt32();
+        int[] arr = new int[length];
+        for (int i = 0; i < length; i++)
+            arr[i] = ReadInt32();
+        return arr;
+    }
+
+    public uint[] ReadUInt32Array()
+    {
+        int length = ReadInt32();
+        uint[] arr = new uint[length];
+        for (int i = 0; i < length; i++)
+            arr[i] = ReadUInt32();
+        return arr;
+    }
+
+    public short[] ReadInt16Array()
+    {
+        int length = ReadInt32();
+        short[] arr = new short[length];
+        for (int i = 0; i < length; i++)
+            arr[i] = ReadInt16();
+        return arr;
+    }
+
+    public ushort[] ReadUInt16Array()
+    {
+        int length = ReadInt32();
+        ushort[] arr = new ushort[length];
+        for (int i = 0; i < length; i++)
+            arr[i] = ReadUInt16();
+        return arr;
+    }
+
+    public byte[] ReadByteArray()
+    {
+        int length = ReadInt32();
+        byte[] arr = reader.ReadBytes(length);
+        readOffset += length;
+        return arr;
+    }
+
+    public float[] ReadFloatArray()
+    {
+        int length = ReadInt32();
+        float[] arr = new float[length];
+        for (int i = 0; i < length; i++)
+            arr[i] = ReadFloat();
+        return arr;
+    }
+
+    public double[] ReadDoubleArray()
+    {
+        int length = ReadInt32();
+        double[] arr = new double[length];
+        for (int i = 0; i < length; i++)
+            arr[i] = ReadDouble();
+        return arr;
+    }
+
+    public string[] ReadStringArray()
+    {
+        int length = ReadInt32();
+        string[] arr = new string[length];
+        for (int i = 0; i < length; i++)
+            arr[i] = ReadString();
+        return arr;
+    }
+
+    public byte[][] ReadBufferArray()
+    {
+        int length = ReadInt32();
+        byte[][] arr = new byte[length][];
+        for (int i = 0; i < length; i++)
+            arr[i] = ReadBuffer();
+        return arr;
+    }
+
+    // ===== UTILITY METHODS =====
     public byte[] GetBuffer()
     {
         writer.Flush();
         return buf.ToArray();
+    }
+
+    public void ResetRead()
+    {
+        buf.Seek(0, SeekOrigin.Begin);
+        readOffset = 0;
     }
 
     public void Dispose()
