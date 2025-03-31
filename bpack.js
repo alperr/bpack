@@ -322,5 +322,4 @@ bpack.prototype.read_string_array = function(buffer, offset)
 };
 
 
-
 module.exports = bpack;
